@@ -38,50 +38,60 @@ const TARGET_URL = 'https://meditaluz.com.mx/numerologia-angelical/';
         let combinations = [];
 
         async function helper(currentCombination, currentDepth) {
-            if (currentDepth === depth) {
-                const selectorInput = await page.waitForSelector('body > div.wrapper.default > div.main > article > div > div > div > section:nth-child(2) > div > div > div > div > div > div > div > iframe', {
-                    visible: true
-                });
-            
-                const iframe = await selectorInput.contentFrame();
-                const bodyIframe = await iframe.waitForSelector('body');
-            
-                const primerDigito = await bodyIframe.waitForSelector('[name=cuartodigito]');
-                const segundoDigito = await bodyIframe.waitForSelector('[name=tercerdigito]');
-                const tercerDigito = await bodyIframe.waitForSelector('[name=segundodigito]');
-                const cuartoDigito = await bodyIframe.waitForSelector('[name=primerdigito]');
-                const submitButton = await bodyIframe.waitForSelector('button.btn.btn-lg.btn-primary.center-block[type="submit"]');
-
-                await primerDigito.select(currentCombination[0]);
-                await segundoDigito.select(currentCombination[1]);
-                await tercerDigito.select(currentCombination[2]);
-                await cuartoDigito.select(currentCombination[3]);
-                await submitButton.click();
-            
-                const nextPageIframe = await page.waitForSelector('iframe');
-                const nextPageInnerIframe = await nextPageIframe.contentFrame();
-                const p =  await nextPageInnerIframe.waitForSelector('div.col-xs-12.col-md-6 > p');
-                const text = await p.evaluate(el => el.textContent);
-                
-                await new Promise((resolve, reject) => {
-                    fs.writeFile(path.resolve(__dirname, 'texts', `${currentCombination.join('')}.txt`), text, err => {
-                        if (err) {
-                          reject('err writing file')
-                        } else {
-                          resolve('ok writing file');
-                        }
+            try {
+                if (currentDepth === depth) {
+                    const selectorInput = await page.waitForSelector('body > div.wrapper.default > div.main > article > div > div > div > section:nth-child(2) > div > div > div > div > div > div > div > iframe', {
+                        visible: true
                     });
-                });
-
-                console.log('Page writing done: ' + currentCombination.join('') + '.txt');
-                // combinations.push([...currentCombination]);
-                return;
-            }
-
-            for (let value of values) {
-                currentCombination[currentDepth] = value;
-                await page.goto(TARGET_URL);
-                await helper(currentCombination, currentDepth + 1);
+                
+                    const iframe = await selectorInput.contentFrame();
+                    const bodyIframe = await iframe.waitForSelector('body');
+                
+                    const primerDigito = await bodyIframe.waitForSelector('[name=primerdigito]');
+                    const segundoDigito = await bodyIframe.waitForSelector('[name=segundodigito]');
+                    const tercerDigito = await bodyIframe.waitForSelector('[name=tercerdigito]');
+                    const cuartoDigito = await bodyIframe.waitForSelector('[name=cuartodigito]');
+                    const submitButton = await bodyIframe.waitForSelector('button.btn.btn-lg.btn-primary.center-block[type="submit"]');
+    
+                    await primerDigito.select(currentCombination[0]);
+                    await segundoDigito.select(currentCombination[1]);
+                    await tercerDigito.select(currentCombination[2]);
+                    await cuartoDigito.select(currentCombination[3]);
+                    await submitButton.click();
+                
+                    const nextPageIframe = await page.waitForSelector('iframe');
+                    const nextPageInnerIframe = await nextPageIframe.contentFrame();
+                    const p =  await nextPageInnerIframe.waitForSelector('div.col-xs-12.col-md-6 > p');
+                    const text = await p.evaluate(el => el.textContent);
+    
+                    await new Promise((resolve, reject) => {
+                        fs.readFile(path.resolve(__dirname, 'texts', `texts.txt`), (err, data) => {
+                            if (err) {
+                                reject('err reading file');
+                            } else {
+                                fs.writeFile(path.resolve(__dirname, 'texts', `texts.txt`), data + `${currentCombination.join('')}: ${text}`, err => {
+                                    if (err) {
+                                      reject('err writing file');
+                                    } else {
+                                      resolve('ok writing file');
+                                    }
+                                });
+                            }
+                        });
+                    });
+    
+                    console.log('Page writing done: ' + currentCombination.join('') + '.txt');
+                    combinations.push(text);
+                    return;
+                }
+    
+                for (let value of values) {
+                    currentCombination[currentDepth] = value;
+                    await page.goto(TARGET_URL);
+                    await helper(currentCombination, currentDepth + 1);
+                }
+            } catch(err) {
+                console.log('Error on writing page: ' + currentCombination.join(''), err);
             }
         }
 
@@ -93,7 +103,7 @@ const TARGET_URL = 'https://meditaluz.com.mx/numerologia-angelical/';
     const depth = 4; // 4 campos
     const allCombinations = await generateCombinations(values, depth);
 
-    // console.log(allCombinations);
+    console.log(allCombinations);
     console.log('Total combinaciones:', allCombinations.length);
 
     // await browser.close();
